@@ -78,6 +78,10 @@ def clustering_page():
                     st.subheader("Data dengan Label Cluster")
                     st.dataframe(st.session_state.data)
 
+                    # Simpan hasil clustering agar bisa digunakan nanti
+                    st.session_state.clustered_data = st.session_state.data.copy()
+
+
                     # Visualisasi Clustering
                     st.subheader("Visualisasi Hasil Clustering")
                     if len(selected_columns) == 2:
@@ -124,45 +128,47 @@ def clustering_page():
 
                 except Exception as e:
                     st.error(f"Gagal melakukan clustering: {e}")
-        st.subheader("Simpan Data ke MySQL via XAMPP")
-        if st.button("Simpan ke Database MySQL"):
-            try:
-                clustered_data = st.session_state.data
-                if "Cluster" not in clustered_data.columns:
-                    st.warning("Data belum memiliki label cluster. Jalankan clustering terlebih dahulu.")
-                else:
-                    unique_clusters = clustered_data["Cluster"].unique()
+        # st.subheader("Simpan Data ke MySQL via XAMPP")
+        # if st.button("Simpan ke Database MySQL"):
+        #     try:
+        #         clustered_data = st.session_state.data
+        #         if "Cluster" not in clustered_data.columns:
+        #             st.warning("Data belum memiliki label cluster. Jalankan clustering terlebih dahulu.")
+        #         else:
+        #             unique_clusters = clustered_data["Cluster"].unique()
 
-                    for cluster_id in unique_clusters:
-                        table_name = f"cluster_{cluster_id}"
-                        cluster_df = clustered_data[clustered_data["Cluster"] == cluster_id]
+        #             for cluster_id in unique_clusters:
+        #                 table_name = f"cluster_{cluster_id}"
+        #                 cluster_df = clustered_data[clustered_data["Cluster"] == cluster_id]
 
-                        # Simpan ke MySQL
-                        cluster_df.to_sql(table_name, con=engine, if_exists='replace', index=False)
+        #                 # Simpan ke MySQL
+        #                 cluster_df.to_sql(table_name, con=engine, if_exists='replace', index=False)
 
-                    st.success(f"Data berhasil disimpan ke database '{database}' dengan {len(unique_clusters)} tabel.")
-            except Exception as e:
-                st.error(f"Gagal menyimpan ke MySQL: {e}")
+        #             st.success(f"Data berhasil disimpan ke database '{database}' dengan {len(unique_clusters)} tabel.")
+        #     except Exception as e:
+        #         st.error(f"Gagal menyimpan ke MySQL: {e}")
 
         st.subheader("Simpan Data dengan Label Cluster")
         if st.button("Simpan ke File CSV"):
             try:
-                print(data)
-                # return
-                # Menyimpan data dengan separator koma
-                output_file = "clustered_data.csv"
-                st.session_state.data.to_csv(output_file, index=False, sep=',')
-                st.success(f"Data berhasil disimpan ke file '{output_file}'!")
-                
-                with open(output_file, "rb") as file:
-                    st.download_button(
-                        label="Unduh File CSV",
-                        data=file,
-                        file_name=output_file,
-                        mime="text/csv"
-                    )
+                if "clustered_data" not in st.session_state:
+                    st.warning("Data belum memiliki label cluster. Jalankan clustering terlebih dahulu.")
+                else:
+                    clustered_data = st.session_state.clustered_data
+                    output_file = "clustered_data.csv"
+                    clustered_data.to_csv(output_file, index=False, sep=',')
+                    st.success(f"Data berhasil disimpan ke file '{output_file}'!")
+                    
+                    with open(output_file, "rb") as file:
+                        st.download_button(
+                            label="Unduh File CSV",
+                            data=file,
+                            file_name=output_file,
+                            mime="text/csv"
+                        )
             except Exception as e:
                 st.error(f"Gagal menyimpan file: {e}")
+
 
 if __name__ == "__main__":
     clustering_page()

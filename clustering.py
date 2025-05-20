@@ -15,11 +15,31 @@ def clustering_page():
 
     if uploaded_file:
         try:
-            if uploaded_file.name.endswith(".csv"):
-                st.session_state.data = pd.read_csv(uploaded_file, sep=";", on_bad_lines='skip')
-            else:
-                st.session_state.data = pd.read_excel(uploaded_file)
+            file_ext = uploaded_file.name.split(".")[-1]
             
+            if file_ext == "csv":
+                st.info("File CSV terdeteksi. Silakan pilih delimiter yang sesuai.")
+                delimiter = st.selectbox(
+                    "Pilih delimiter CSV:",
+                    options={
+                        ",": "Koma (,)",
+                        ";": "Titik koma (;)",
+                        "\t": "Tab (\\t)",
+                        "|": "Pipa (|)"
+                    },
+                    format_func=lambda x: {
+                        ",": "Koma (,)",
+                        ";": "Titik koma (;)",
+                        "\t": "Tab (\\t)",
+                        "|": "Pipa (|)"
+                    }[x],
+                    index=1  # Default ke titik koma (;)
+                )
+                st.session_state.data = pd.read_csv(uploaded_file, sep=delimiter, on_bad_lines='skip')
+            
+            elif file_ext in ["xls", "xlsx"]:
+                st.session_state.data = pd.read_excel(uploaded_file)
+
             st.write(f"Jumlah baris: {st.session_state.data.shape[0]}, Jumlah kolom: {st.session_state.data.shape[1]}")
         except Exception as e:
             st.error(f"Gagal memuat data: {e}")
@@ -34,7 +54,7 @@ def clustering_page():
         numeric_columns = data.select_dtypes(include=["number"]).columns.tolist()
         selected_columns = st.multiselect("Pilih Kolom Numerik:", numeric_columns)
         print(data)
-        return
+        # return
 
         if selected_columns:
             clustering_data = data[selected_columns]

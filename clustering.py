@@ -16,7 +16,7 @@ def clustering_page():
     if uploaded_file:
         try:
             if uploaded_file.name.endswith(".csv"):
-                st.session_state.data = pd.read_csv(uploaded_file, on_bad_lines='skip')
+                st.session_state.data = pd.read_csv(uploaded_file, sep=";", on_bad_lines='skip')
             else:
                 st.session_state.data = pd.read_excel(uploaded_file)
             
@@ -33,6 +33,8 @@ def clustering_page():
         st.subheader("Pilih Kolom untuk Clustering")
         numeric_columns = data.select_dtypes(include=["number"]).columns.tolist()
         selected_columns = st.multiselect("Pilih Kolom Numerik:", numeric_columns)
+        print(data)
+        return
 
         if selected_columns:
             clustering_data = data[selected_columns]
@@ -102,10 +104,31 @@ def clustering_page():
 
                 except Exception as e:
                     st.error(f"Gagal melakukan clustering: {e}")
+        st.subheader("Simpan Data ke MySQL via XAMPP")
+        if st.button("Simpan ke Database MySQL"):
+            try:
+                clustered_data = st.session_state.data
+                if "Cluster" not in clustered_data.columns:
+                    st.warning("Data belum memiliki label cluster. Jalankan clustering terlebih dahulu.")
+                else:
+                    unique_clusters = clustered_data["Cluster"].unique()
+
+                    for cluster_id in unique_clusters:
+                        table_name = f"cluster_{cluster_id}"
+                        cluster_df = clustered_data[clustered_data["Cluster"] == cluster_id]
+
+                        # Simpan ke MySQL
+                        cluster_df.to_sql(table_name, con=engine, if_exists='replace', index=False)
+
+                    st.success(f"Data berhasil disimpan ke database '{database}' dengan {len(unique_clusters)} tabel.")
+            except Exception as e:
+                st.error(f"Gagal menyimpan ke MySQL: {e}")
 
         st.subheader("Simpan Data dengan Label Cluster")
         if st.button("Simpan ke File CSV"):
             try:
+                print(data)
+                # return
                 # Menyimpan data dengan separator koma
                 output_file = "clustered_data.csv"
                 st.session_state.data.to_csv(output_file, index=False, sep=',')

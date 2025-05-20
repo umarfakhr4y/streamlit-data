@@ -4,6 +4,9 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+from database import get_connection
+from database import get_sqlalchemy_engine
+
 
 def clustering_page():
     st.title("Data Clustering Parfum")
@@ -128,25 +131,6 @@ def clustering_page():
 
                 except Exception as e:
                     st.error(f"Gagal melakukan clustering: {e}")
-        # st.subheader("Simpan Data ke MySQL via XAMPP")
-        # if st.button("Simpan ke Database MySQL"):
-        #     try:
-        #         clustered_data = st.session_state.data
-        #         if "Cluster" not in clustered_data.columns:
-        #             st.warning("Data belum memiliki label cluster. Jalankan clustering terlebih dahulu.")
-        #         else:
-        #             unique_clusters = clustered_data["Cluster"].unique()
-
-        #             for cluster_id in unique_clusters:
-        #                 table_name = f"cluster_{cluster_id}"
-        #                 cluster_df = clustered_data[clustered_data["Cluster"] == cluster_id]
-
-        #                 # Simpan ke MySQL
-        #                 cluster_df.to_sql(table_name, con=engine, if_exists='replace', index=False)
-
-        #             st.success(f"Data berhasil disimpan ke database '{database}' dengan {len(unique_clusters)} tabel.")
-        #     except Exception as e:
-        #         st.error(f"Gagal menyimpan ke MySQL: {e}")
 
         st.subheader("Simpan Data dengan Label Cluster")
         if st.button("Simpan ke File CSV"):
@@ -168,6 +152,31 @@ def clustering_page():
                         )
             except Exception as e:
                 st.error(f"Gagal menyimpan file: {e}")
+                
+        st.subheader("Simpan Data ke MySQL via XAMPP")
+        if st.button("Simpan ke Database MySQL"):
+            try:
+                if "clustered_data" not in st.session_state:
+                    st.warning("Data belum memiliki label cluster. Jalankan clustering terlebih dahulu.")
+                else:
+                    engine = get_sqlalchemy_engine()
+                    clustered_data = st.session_state.clustered_data
+                    if "Cluster" not in clustered_data.columns:
+                        st.warning("Data belum memiliki label cluster. Jalankan clustering terlebih dahulu.")
+                    else:
+                        unique_clusters = clustered_data["Cluster"].unique()
+
+                        for cluster_id in unique_clusters:
+                            table_name = f"cluster_{cluster_id}"
+                            cluster_df = clustered_data[clustered_data["Cluster"] == cluster_id]
+
+                            # Simpan ke MySQL
+                            cluster_df.to_sql(table_name, con=engine, if_exists='replace', index=False)
+
+                        st.success(f"Data berhasil disimpan ke database dengan {len(unique_clusters)} tabel.")
+            except Exception as e:
+                st.error(f"Gagal menyimpan ke MySQL: {e}")
+    
 
 
 if __name__ == "__main__":

@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from database import get_connection
 from database import get_sqlalchemy_engine
+from datetime import datetime
+from sqlalchemy import inspect
+
+
 
 
 def clustering_page():
@@ -161,19 +165,29 @@ def clustering_page():
                 else:
                     engine = get_sqlalchemy_engine()
                     clustered_data = st.session_state.clustered_data
+
                     if "Cluster" not in clustered_data.columns:
                         st.warning("Data belum memiliki label cluster. Jalankan clustering terlebih dahulu.")
                     else:
-                        unique_clusters = clustered_data["Cluster"].unique()
+                        # Format tanggal
+                        today = datetime.today().strftime('%Y_%m_%d')
+                        base_table_name = f"clustering_result_{today}"
 
-                        for cluster_id in unique_clusters:
-                            table_name = f"cluster_{cluster_id}"
-                            cluster_df = clustered_data[clustered_data["Cluster"] == cluster_id]
+                        # Cek nama tabel yang sudah ada
+                        inspector = inspect(engine)
+                        existing_tables = inspector.get_table_names()
 
-                            # Simpan ke MySQL
-                            cluster_df.to_sql(table_name, con=engine, if_exists='replace', index=False)
+                        # Cari nomor unik yang belum digunakan
+                        counter = 1
+                        while f"{base_table_name}_{counter}" in existing_tables:
+                            counter += 1
 
-                        st.success(f"Data berhasil disimpan ke database dengan {len(unique_clusters)} tabel.")
+                        table_name = f"{base_table_name}_{counter}"
+
+                        # Simpan ke MySQL
+                        clustered_data.to_sql(table_name, con=engine, if_exists='replace', index=False)
+
+                        st.success(f"Data berhasil disimpan ke database pada tabel '{table_name}'.")
             except Exception as e:
                 st.error(f"Gagal menyimpan ke MySQL: {e}")
     

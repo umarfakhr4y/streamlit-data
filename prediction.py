@@ -19,22 +19,54 @@ def prediction_page():
     all_tables = inspector.get_table_names()
     clustering_tables = [t for t in all_tables if t.startswith("clustering_result_")]
 
-    selected_table = st.selectbox("Pilih tabel clustering dari Database", clustering_tables)
+    # selected_table = st.selectbox("Pilih tabel clustering dari Database", clustering_tables)
+    uploaded_file = st.file_uploader("Unggah File CSV atau Excel dengan data harga parfum", type=["csv", "xlsx"])
 
     data = None
-    if selected_table:
+    # if selected_table:
+    #     try:
+    #         data = pd.read_sql_table(selected_table, con=engine)
+    #         st.success(f"Data dari tabel '{selected_table}' berhasil dimuat.")
+    #         st.dataframe(data)
+    #     except Exception as e:
+    #         st.error(f"Gagal memuat data dari tabel: {e}")
+    #         return
+    if uploaded_file:
         try:
-            data = pd.read_sql_table(selected_table, con=engine)
-            st.success(f"Data dari tabel '{selected_table}' berhasil dimuat.")
+            file_ext = uploaded_file.name.split(".")[-1]
+            
+            if file_ext == "csv":
+                st.info("File CSV terdeteksi. Silakan pilih delimiter yang sesuai.")
+                delimiter = st.selectbox(
+                    "Pilih delimiter CSV:",
+                    options={
+                        ",": "Koma (,)",
+                        ";": "Titik koma (;)",
+                        "\t": "Tab (\\t)",
+                        "|": "Pipa (|)"
+                    },
+                    format_func=lambda x: {
+                        ",": "Koma (,)",
+                        ";": "Titik koma (;)",
+                        "\t": "Tab (\\t)",
+                        "|": "Pipa (|)"
+                    }[x],
+                    index=1  # Default ke titik koma (;)
+                )
+                data = pd.read_csv(uploaded_file, sep=delimiter, on_bad_lines='skip')
+            else:
+                data = pd.read_excel(uploaded_file)       
+            st.success("Data berhasil dimuat!")
+            st.write("Tampilan data:")
             st.dataframe(data)
         except Exception as e:
-            st.error(f"Gagal memuat data dari tabel: {e}")
+            st.error(f"Terjadi kesalahan saat memuat data: {e}")
             return
 
     if data is not None:
         st.subheader("Pilih kolom untuk digunakan dalam prediksi")
-        feature_columns = st.multiselect("Pilih fitur (kolom numerik)", data.select_dtypes(include=["number"]).columns.tolist())
-        target_column = st.selectbox("Pilih kolom target (Harga)", data.columns)
+        feature_columns = st.multiselect("Pilih fitur (kolom numerik)", data.columns)
+        target_column = st.selectbox("Pilih kolom target (Harga)", data.select_dtypes(include=["number"]).columns.tolist())
 
         if st.button("Latih Model"):
             if len(feature_columns) == 0 or target_column is None:
@@ -47,7 +79,7 @@ def prediction_page():
                 # One-Hot Encoding untuk cluster
             encoder = OneHotEncoder(sparse_output=False, drop='first')
             # Hilangkan dummy pertama untuk menghindari multikolinearitas
-            X_encoded = encoder.fit_transform(data[['Cluster']])
+            X_encoded = encoder.fit_transform(data[['Labels']])
 
             # Gabungkan dengan fitur lain
             X_final = np.hstack((data[['FORMULA', 'AQUADEST', 'ALKOHOL']].values, X_encoded))

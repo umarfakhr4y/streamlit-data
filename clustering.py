@@ -10,6 +10,30 @@ from datetime import datetime
 from sqlalchemy import inspect
 
 
+def plot_with_legend(scatter_data, labels, selected_columns, is_pca=False):
+    unique_labels = sorted(set(labels))
+    cmap = plt.cm.get_cmap("viridis", len(unique_labels))
+    
+    plt.figure(figsize=(8, 6))
+    for i in unique_labels:
+        plt.scatter(
+            scatter_data[labels == i, 0],
+            scatter_data[labels == i, 1],
+            label=f"Cluster {i}",
+            s=50,
+            c=[cmap(i)]
+        )
+    if is_pca:
+        plt.xlabel("PC 1")
+        plt.ylabel("PC 2")
+        plt.title("Visualisasi Clustering dengan PCA (2D)")
+    else:
+        plt.xlabel(selected_columns[0])
+        plt.ylabel(selected_columns[1])
+        plt.title("Scatter Plot Clustering (2 Kolom)")
+
+    plt.legend(title="Keterangan Warna")
+    st.pyplot(plt)
 
 
 def clustering_page():
@@ -93,28 +117,39 @@ def clustering_page():
                     st.subheader("Visualisasi Hasil Clustering")
                     if len(selected_columns) == 2:
                         plt.figure(figsize=(8, 6))
-                        plt.scatter(
-                            clustering_data_scaled[:, 0], clustering_data_scaled[:, 1],
-                            c=cluster_labels, cmap="viridis", s=50
-                        )
-                        plt.xlabel(selected_columns[0])
-                        plt.ylabel(selected_columns[1])
-                        plt.title("Scatter Plot Clustering (2 Kolom)")
-                        st.pyplot(plt)
+                        plot_with_legend(clustering_data_scaled, cluster_labels, selected_columns)
+
 
                     elif len(selected_columns) == 3:
                         from mpl_toolkits.mplot3d import Axes3D
-                        fig = plt.figure(figsize=(10, 8))
+                        fig = plt.figure(figsize=(14, 8))  # Lebar ditambah jadi 14
                         ax = fig.add_subplot(111, projection='3d')
-                        ax.scatter(
+                        scatter = ax.scatter(
                             clustering_data_scaled[:, 0], clustering_data_scaled[:, 1], clustering_data_scaled[:, 2],
-                            c=cluster_labels, cmap="viridis", s=50
+                            c=cluster_labels, cmap="viridis", s=60
                         )
+
                         ax.set_xlabel(selected_columns[0])
                         ax.set_ylabel(selected_columns[1])
                         ax.set_zlabel(selected_columns[2])
-                        ax.set_title("Scatter Plot Clustering (3 Kolom)")
+                        ax.set_title("Scatter Plot Clustering (3D)")
+
+                        # Tambahkan legend manual berdasarkan warna
+                        from matplotlib.lines import Line2D
+                        import numpy as np
+
+                        unique_labels = np.unique(cluster_labels)
+                        cmap = plt.cm.get_cmap("viridis", len(unique_labels))
+                        legend_elements = [
+                            Line2D([0], [0], marker='o', color='w', label=f"Cluster {i}",
+                                markerfacecolor=cmap(i), markersize=10)
+                            for i in unique_labels
+                        ]
+                        ax.legend(handles=legend_elements, title="Keterangan Warna", loc='upper right')
+
+                        plt.tight_layout()
                         st.pyplot(fig)
+
 
                     elif len(selected_columns) > 3:
                         st.warning("Dimensi terlalu tinggi untuk divisualisasikan langsung. Menggunakan PCA untuk pengurangan dimensi.")
@@ -123,15 +158,8 @@ def clustering_page():
                         pca = PCA(n_components=2)
                         pca_data = pca.fit_transform(clustering_data_scaled)
 
-                        plt.figure(figsize=(8, 6))
-                        plt.scatter(
-                            pca_data[:, 0], pca_data[:, 1],
-                            c=cluster_labels, cmap="viridis", s=50
-                        )
-                        plt.xlabel("PCA Component 1")
-                        plt.ylabel("PCA Component 2")
-                        plt.title("Visualisasi Clustering dengan PCA (2D)")
-                        st.pyplot(plt)
+                        plot_with_legend(pca_data, cluster_labels, selected_columns, is_pca=True)
+
 
                 except Exception as e:
                     st.error(f"Gagal melakukan clustering: {e}")

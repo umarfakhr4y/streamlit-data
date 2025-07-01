@@ -9,8 +9,9 @@ def login_page():
     if st.button("Login"):
         if authenticate(username, password):
             st.session_state.is_logged_in = True  # Status login berhasil
+            st.session_state.page = "Beranda"     # <--- Tambahkan baris ini
             st.success("Login berhasil! Selamat datang di dashboard.")
-            st.rerun()  # Perbaikan di sini: st.rerun menggantikan st.experimental_rerun
+            st.rerun()  # Refresh halaman agar langsung ke dashboard
         else:
             st.error("Username atau password salah.")
 
@@ -22,7 +23,7 @@ def authenticate(username, password):
             query = "SELECT * FROM users WHERE username = %s AND password = %s"
             cursor.execute(query, (username, password))
             result = cursor.fetchone()
-            return bool(result)  # True jika login berhasil
+            return bool(result)
         except Exception as e:
             st.error(f"Terjadi kesalahan database: {e}")
             return False

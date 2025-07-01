@@ -11,23 +11,18 @@ def app():
     if "is_logged_in" not in st.session_state:
         st.session_state.is_logged_in = False
     if "page" not in st.session_state:
-        st.session_state.page = "Login Admin"  # Default: halaman login
+        st.session_state.page = "Login Admin"
     if "data" not in st.session_state:
-        st.session_state.data = pd.DataFrame()  # Inisialisasi sebagai DataFrame kosong
+        st.session_state.data = pd.DataFrame()
 
     # Jika belum login, paksa user ke halaman login
     if not st.session_state.is_logged_in:
         st.session_state.page = "Login Admin"
-
-    # Menampilkan halaman login jika belum login
-    if st.session_state.page == "Login Admin" and not st.session_state.is_logged_in:
         login_page()
-        return  # Hentikan eksekusi halaman lainnya sampai login berhasil
+        return  # Langsung keluar agar sidebar tidak dirender
 
-    # Sidebar untuk navigasi setelah login
+    # Sidebar hanya ditampilkan jika sudah login
     st.sidebar.title("Menu Utama")
-
-    # Menu Buttons
     if st.sidebar.button("🏠 Beranda", key="dashboard"):
         st.session_state.page = "Beranda"
     if st.sidebar.button("🔍 Clustering", key="clustering"):
@@ -37,17 +32,15 @@ def app():
     if st.sidebar.button("🔒 Logout", key="logout"):
         st.session_state.is_logged_in = False
         st.session_state.page = "Login Admin"
-       
+        st.rerun()  # Penting! Untuk langsung rerender ke halaman login
 
-    # Render halaman berdasarkan pilihan di sidebar
+    # Render halaman berdasarkan pilihan
     if st.session_state.page == "Beranda":
         dashboard_page()
     elif st.session_state.page == "Clustering":
         clustering_page()
     elif st.session_state.page == "Prediction":
         prediction_page()
-    elif st.session_state.page == "Login Admin":
-       login_page()
 
 # Menjalankan aplikasi Streamlit
 if __name__ == "__main__":

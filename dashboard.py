@@ -1,106 +1,110 @@
 import streamlit as st
-import mysql.connector
 import pandas as pd
+from database import fetch_data, insert_data, update_data, delete_data
 
-# Koneksi ke database
-def get_connection():
-    return mysql.connector.connect(
-        host="localhost",  # Sesuaikan dengan host database Anda
-        user="root",       # Ganti dengan username MySQL Anda
-        password="",       # Ganti dengan password MySQL Anda
-        database="login_app"
-    )
-
-# Fungsi membaca data dari database
-def fetch_data():
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM parfum_table")
-    data = cursor.fetchall()
-    conn.close()
-    return pd.DataFrame(data)
-
-# Fungsi menambahkan data ke database
-def insert_data(varian_name, fragrant, formula, aquadest, alkohol, gender, jenis, ukuran, harga):
-    conn = get_connection()
-    cursor = conn.cursor()
-    query = """
-        INSERT INTO parfum_table (VARIAN_NAME, FRAGRANT, FORMULA, AQUADEST, ALKOHOL, GENDER, JENIS, UKURAN, HARGA)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-    """
-    values = (varian_name, fragrant, formula, aquadest, alkohol, gender, jenis, ukuran, harga)
-    cursor.execute(query, values)
-    conn.commit()
-    conn.close()
-
-# Fungsi memperbarui data di database
-def update_data(id, varian_name, fragrant, formula, aquadest, alkohol, gender, jenis, ukuran, harga):
-    conn = get_connection()
-    cursor = conn.cursor()
-    query = """
-        UPDATE parfum_table
-        SET VARIAN_NAME = %s, FRAGRANT = %s, FORMULA = %s, AQUADEST = %s, ALKOHOL = %s, GENDER = %s, JENIS = %s, UKURAN = %s, HARGA = %s
-        WHERE id = %s
-    """
-    values = (varian_name, fragrant, formula, aquadest, alkohol, gender, jenis, ukuran, harga, id)
-    cursor.execute(query, values)
-    conn.commit()
-    conn.close()
-
-# Fungsi menghapus data dari database
-def delete_data(id):
-    conn = get_connection()
-    cursor = conn.cursor()
-    query = "DELETE FROM parfum_table WHERE id = %s"
-    cursor.execute(query, (id,))
-    conn.commit()
-    conn.close()
-
-# Dashboard dengan CRUD
 def dashboard_page():
     st.title("Dashboard Pengelolaan Data Parfum")
-    st.subheader("Tabel Data Parfum")
-    
-    # Menampilkan data
-    data = fetch_data()
-    st.dataframe(data)
-    
-    # Form untuk menambah atau memperbarui data
-    with st.form("form_data"):
-        st.write("Masukkan Data Parfum:")
-        id = st.text_input("ID (kosongkan untuk data baru)")
-        varian_name = st.text_input("Varian Name")
-        fragrant = st.text_input("Fragrant")
-        formula = st.number_input("Formula", min_value=0.0)
-        aquadest = st.number_input("Aquadest", min_value=0.0)
-        alkohol = st.number_input("Alkohol", min_value=0.0)
-        gender = st.selectbox("Gender", ["CEWE", "COWO", "UNISEX"])
-        jenis = st.text_input("Jenis")
-        ukuran = st.number_input("Ukuran", min_value=0.0)
-        harga = st.number_input("Harga", min_value=0.0)
-        
-        submit_button = st.form_submit_button("Simpan Data")
-        if submit_button:
-            if id:
-                update_data(id, varian_name, fragrant, formula, aquadest, alkohol, gender, jenis, ukuran, harga)
-                st.success("Data berhasil diperbarui!")
-            else:
-                insert_data(varian_name, fragrant, formula, aquadest, alkohol, gender, jenis, ukuran, harga)
-                st.success("Data berhasil ditambahkan!")
-    
-    # Menghapus data
-    st.subheader("Hapus Data")
-    delete_id = st.text_input("Masukkan ID untuk dihapus")
-    if st.button("Hapus Data"):
-        if delete_id:
-            delete_data(delete_id)
-            st.success(f"Data dengan ID {delete_id} berhasil dihapus!")
-        else:
-            st.error("Masukkan ID untuk menghapus data.")
-    
-    # Refresh data
-    if st.button("Muat Ulang Data"):
-        st.experimental_rerun()
 
-if __name__ == "__main__":
-    dashboard_page()
+    # --- STATE CONTROL ---
+    if "edit_id" not in st.session_state:
+        st.session_state.edit_id = None
+    if "varian_to_add" not in st.session_state:
+        st.session_state.varian_to_add = ""
+    if "cached_data" not in st.session_state:
+        st.session_state.cached_data = fetch_data()
+
+    # --- TAMPILKAN DATA ---
+    st.subheader("Tabel Data Parfum")
+    data = st.session_state.cached_data
+    st.dataframe(data)
+
+    # --- TAMBAH DATA 2 TAHAP ---
+    st.subheader("Tambah Data Baru")
+    if not st.session_state.varian_to_add:
+        with st.form("form_nama_varian"):
+            varian_input = st.text_input("Masukkan nama varian baru")
+            lanjut = st.form_submit_button("Lanjutkan")
+            if lanjut:
+                if varian_input.strip():
+                    st.session_state.varian_to_add = varian_input.strip()
+                else:
+                    st.warning("Nama varian tidak boleh kosong.")
+    else:
+        with st.form("form_lanjut_tambah"):
+            st.markdown(f"**Varian:** `{st.session_state.varian_to_add}`")
+            fragrant = st.text_input("Fragrant")
+            formula = st.number_input("Formula", min_value=0.0)
+            aquadest = st.number_input("Aquadest", min_value=0.0)
+            alkohol = st.number_input("Alkohol", min_value=0.0)
+            gender = st.selectbox("Gender", ["CEWE", "COWO", "UNISEX"])
+            jenis = st.text_input("Jenis")
+            ukuran = st.number_input("Ukuran", min_value=0.0)
+            harga = st.number_input("Harga", min_value=0.0)
+            simpan = st.form_submit_button("Simpan")
+            if simpan:
+                insert_data(st.session_state.varian_to_add, fragrant, formula, aquadest, alkohol, gender, jenis, ukuran, harga)
+                st.success("Data berhasil ditambahkan.")
+                st.session_state.varian_to_add = ""
+                st.session_state.cached_data = fetch_data()  # Refresh data
+
+        if st.button("Batalkan Tambah"):
+            st.session_state.varian_to_add = ""
+
+    # --- EDIT DATA ---
+    st.subheader("Edit Data")
+    varian_options = [f"{row['VARIAN_NAME']} ({row['id']})" for _, row in data.iterrows()]
+    selected_label = st.selectbox("Pilih varian untuk diedit", varian_options)
+    selected_id = int(selected_label.split("(")[-1].replace(")", ""))
+
+    if st.button("Edit Data"):
+        st.session_state.edit_id = selected_id
+
+    if st.session_state.edit_id is not None:
+        selected_row = data[data["id"] == st.session_state.edit_id].iloc[0]
+        with st.form("form_edit_data"):
+            st.write(f"Edit Data ID: {st.session_state.edit_id}")
+            varian_name = st.text_input("Varian Name", value=selected_row["VARIAN_NAME"])
+            fragrant = st.text_input("Fragrant", value=selected_row["FRAGRANT"])
+            formula = st.number_input("Formula", value=float(selected_row["FORMULA"]), min_value=0.0)
+            aquadest = st.number_input("Aquadest", value=float(selected_row["AQUADEST"]), min_value=0.0)
+            alkohol = st.number_input("Alkohol", value=float(selected_row["ALKOHOL"]), min_value=0.0)
+            gender = st.selectbox("Gender", ["CEWE", "COWO", "UNISEX"], index=["CEWE", "COWO", "UNISEX"].index(selected_row["GENDER"]))
+            jenis = st.text_input("Jenis", value=selected_row["JENIS"])
+            ukuran = st.number_input("Ukuran", value=float(selected_row["UKURAN"]), min_value=0.0)
+            harga = st.number_input("Harga", value=float(selected_row["HARGA"]), min_value=0.0)
+            simpan = st.form_submit_button("Simpan Perubahan")
+            if simpan:
+                update_data(st.session_state.edit_id, varian_name, fragrant, formula, aquadest, alkohol, gender, jenis, ukuran, harga)
+                st.success("Data berhasil diperbarui.")
+                st.session_state.cached_data = fetch_data()
+                st.session_state.edit_id = None
+
+        if st.button("Batalkan Edit"):
+            st.session_state.edit_id = None
+
+        # --- HAPUS DATA DENGAN DROPDOWN ---
+    st.subheader("Hapus Data")
+
+    # Buat daftar opsi dari data
+    hapus_options = [f"{row['VARIAN_NAME']} (ID: {row['id']})" for _, row in data.iterrows()]
+    
+    # Tampilkan dropdown jika data tersedia
+    if hapus_options:
+        selected_delete = st.selectbox("Pilih varian untuk dihapus", hapus_options)
+        delete_id = int(selected_delete.split("ID: ")[-1].replace(")", ""))
+
+        if st.button("Hapus Varian Ini"):
+            try:
+                delete_data(delete_id)
+                st.success(f"Data dengan ID {delete_id} berhasil dihapus.")
+                st.session_state.cached_data = fetch_data()  # Refresh tabel
+            except Exception as e:
+                st.error(f"Gagal menghapus data: {e}")
+    else:
+        st.info("Tidak ada data yang bisa dihapus.")
+
+
+    # --- REFRESH MANUAL (opsional) ---
+    if st.button("Muat Ulang Data"):
+        st.session_state.cached_data = fetch_data()
+        st.success("Data berhasil dimuat ulang.")

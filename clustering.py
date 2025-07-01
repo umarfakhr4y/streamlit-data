@@ -91,6 +91,28 @@ def clustering_page():
             clustering_data = data[selected_columns]
             st.write("Data yang Dipilih untuk Clustering:")
             st.dataframe(clustering_data)
+            if st.button("Tampilkan Elbow Method (Optimal k)"):
+                try:
+                    scaler = StandardScaler()
+                    scaled_data = scaler.fit_transform(clustering_data)
+
+                    distortions = []
+                    K = range(1, 11)
+
+                    for k in K:
+                        kmeans = KMeans(n_clusters=k, random_state=42)
+                        kmeans.fit(scaled_data)
+                        distortions.append(kmeans.inertia_)
+
+                    fig, ax = plt.subplots(figsize=(8, 5))
+                    ax.plot(K, distortions, marker='o')
+                    ax.set_title("Elbow Method untuk Menentukan k Optimal")
+                    ax.set_xlabel("Jumlah Cluster (k)")
+                    ax.set_ylabel("Inertia")
+                    st.pyplot(fig)
+                except Exception as e:
+                    st.error(f"Gagal menampilkan Elbow Method: {e}")
+
 
             scaler = StandardScaler()
             clustering_data_scaled = scaler.fit_transform(clustering_data)
@@ -160,9 +182,30 @@ def clustering_page():
 
                         plot_with_legend(pca_data, cluster_labels, selected_columns, is_pca=True)
 
+                     # --- Evaluasi Clustering dengan Silhouette Score ---
+                    from sklearn.metrics import silhouette_score, silhouette_samples
 
+                    # Gunakan data hasil scaling dan cluster hasil KMeans
+                    silhouette_avg = silhouette_score(clustering_data_scaled, cluster_labels)
+                    st.subheader("Evaluasi Clustering - Silhouette Coefficient")
+                    st.markdown(f"**Rata-rata Silhouette Coefficient:** `{silhouette_avg:.4f}`")
+
+                    # Hitung nilai silhouette tiap data
+                    silhouette_vals = silhouette_samples(clustering_data_scaled, cluster_labels)
+
+                    # Tambahkan ke DataFrame
+                    st.session_state.data["Silhouette"] = silhouette_vals
+                    st.session_state.clustered_data = st.session_state.data.copy()  # Simpan termasuk silhouette
+
+                    # Tampilkan rata-rata per cluster
+                    silhouette_df = st.session_state.data.groupby("Cluster")["Silhouette"].mean().reset_index()
+                    st.markdown("**Rata-rata Silhouette per Cluster:**")
+                    st.dataframe(silhouette_df.style.format({"Silhouette": "{:.4f}"}))
+                    
                 except Exception as e:
                     st.error(f"Gagal melakukan clustering: {e}")
+
+
 
         st.subheader("Simpan Data dengan Label Cluster")
         if st.button("Simpan ke File CSV"):
